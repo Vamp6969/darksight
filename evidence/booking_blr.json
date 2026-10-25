@@ -1,0 +1,63 @@
+{
+  "scenario": "booking_blr",
+  "platform": "Booking.com",
+  "category": "Travel",
+  "run_id": "5550d751-a64d-4b36-bcfd-fd0744075b3b",
+  "captured_at": "2026-10-25T15:20:05Z",
+  "agent_steps": 17,
+  "fees": [
+    {
+      "label": "Original price",
+      "amount_inr": 4373.31,
+      "late": false
+    },
+    {
+      "label": "Limited-time Deal discount",
+      "amount_inr": -2536.52,
+      "late": false
+    },
+    {
+      "label": "Subtotal (before tax)",
+      "amount_inr": 1749.33,
+      "late": false
+    },
+    {
+      "label": "Goods and services tax (GST)",
+      "amount_inr": 87.47,
+      "late": true
+    },
+    {
+      "label": "Total",
+      "amount_inr": 1836.8,
+      "late": false
+    }
+  ],
+  "steps": [
+    {
+      "note": "Displayed on results card with text '+ taxes and charges' / 'Including all taxes and fees'. Cheapest room: Standard Double Room (1 queen bed, max 1 guest) without breakfast at Rs. 1,749, but with 2 adults the cheapest shown is Rs. 1,917.",
+      "page": "Search Results (Booking.com)",
+      "step": 1,
+      "price_shown_inr": 1917.0
+    },
+    {
+      "note": "Standard Double Room (1 queen bed, max 1 person) without breakfast was the cheapest option. Selected 1 room. Clicked 'I'll reserve' / 'Reserve' to proceed to booking page.",
+      "page": "Hotel Details Page",
+      "step": 2,
+      "price_shown_inr": 1749.0
+    },
+    {
+      "note": "Price breakdown shown before filling any personal details. Original price Rs. 4,373.31 with a Limited-time Deal discount of Rs. 2,536.52 applied. Subtotal Rs. 1,836.80 includes Rs. 87.47 in taxes.",
+      "page": "Booking/Reservation Details (secure.booking.com)",
+      "step": 3,
+      "price_shown_inr": 1836.8
+    }
+  ],
+  "hotel_name": "Itsy Hotels Emirates Suites - Near RMZ EcoWorld, Bellandur",
+  "final_total_inr": 1836.8,
+  "urgency": [
+    "Limited-time Deal – You're getting a discount because—few people are staying here for these dates. Book now and pay later",
+    "Stay flexible: You can cancel for free before November 13, 2026 – lock in this great price today",
+    "Free cancellation before November 13, 2026"
+  ],
+  "item_price_inr": 1749.0
+}
