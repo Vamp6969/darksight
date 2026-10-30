@@ -59,11 +59,12 @@ def drip_pricing(ev):
         f"₹{first:,.0f} → ₹{total:,.0f} (+{jump:.0f}%) at the last step; added: {late}"
 
 
-ETA = re.compile(r"\b\d+\s*(min|mins|minutes|hrs?|hours?)\b|deliver(y|ed) (in|by|time)|arriv", re.I)
+# delivery ETAs and plain discount badges are information, not pressure ("sale ends in 2h" still counts)
+NOT_URGENCY = re.compile(r"deliver|arriv|\bETA\b|^\W*\d+\s*%\s*off\W*(label|badge|tag)?\W*$", re.I)
 
 
 def false_urgency(ev, rerun=None):
-    claims = [m for m in ev.get("urgency", []) if not ETA.search(m)]  # delivery ETAs are information, not pressure
+    claims = [m for m in ev.get("urgency", []) if not NOT_URGENCY.search(m)]
     msgs = [m if len(m) < 70 else m[:67] + "…" for m in claims]
     if not msgs:
         return PASS, "False urgency", "No urgency claims"
@@ -125,6 +126,8 @@ if __name__ == "__main__":
     assert drip_pricing({"item_price_inr": 16, "final_total_inr": 43, "steps": []})[0] == FAIL  # no step list needed
     assert false_urgency({"urgency": ["22 MINS delivery estimate"]})[0] == PASS
     assert false_urgency({"urgency": ["Only 1 room left"]})[0] == WARN
+    assert false_urgency({"urgency": ["20% OFF label"]})[0] == PASS
+    assert false_urgency({"urgency": ["Sale ends in 2 hours"]})[0] == WARN
     assert audit({"steps": [{"note": "Login required"}]}) == ("?", [(WARN, "Bill not reached", "Login required")])
     r = report({"item_price_inr": 16, "final_total_inr": 43, "fees": [{"label": "Item total", "amount_inr": 16},
                {"label": "Delivery charge", "amount_inr": 25}, {"label": "Handling charge", "amount_inr": 2}]})

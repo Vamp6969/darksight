@@ -39,7 +39,7 @@ FIELD_RULES = (  # TinyFish schemas take no descriptions, so the field meanings 
     " Field rules: item is the product or room you picked and item_price_inr its price as first listed. "
     "steps must contain one entry per page you priced (at least the listing price and the final bill). "
     "fees must list every fee, charge or tax line on the bill with its amount. final_total_inr is the amount payable INCLUDING all taxes and fees on the last page before "
-    "payment. urgency lists scarcity or time-pressure claims (e.g. 'Only 1 left', countdown timers); delivery time estimates are NOT urgency. preticked "
+    "payment. urgency lists scarcity or time-pressure claims (e.g. 'Only 1 left', countdown timers); delivery time estimates and plain discount badges are NOT urgency. preticked "
     "lists only PAID extras already selected without the user choosing them (insurance, tips, donations, add-ons "
     "that change the total); leave it empty if none, and never include payment terms or free perks."
 )
