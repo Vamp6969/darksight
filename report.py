@@ -13,7 +13,7 @@ def render(path):
         f'<b>{html.escape(n)}</b><span class="muted">{html.escape(d)}</span></div>'
         for v, n, d in findings)
     steps = "".join(
-        f'<li><b>Step {s.get("step", i + 1)}</b> · {html.escape(str(s.get("page", "")))} — '
+        f'<li><b>Step {s.get("step", i + 1)}</b> · {html.escape(str(s.get("page", "")))}: '
         f'₹{s["price_shown_inr"]:,.0f}<span class="muted"> {html.escape(s.get("note") or "")}</span></li>'
         for i, s in enumerate(ev.get("steps", [])) if s.get("price_shown_inr"))
     title = ev.get("hotel_name") or ev.get("platform")

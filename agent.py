@@ -55,7 +55,7 @@ def inr(v):
     """'Rs. 1,917 per night' -> 1917.0"""
     if isinstance(v, (int, float)) or v is None:
         return v
-    m = re.search(r"[\d,]+(?:\.\d+)?", str(v))
+    m = re.search(r"\d[\d,]*(?:\.\d+)?", str(v))  # must start with a digit: '₹', ',' or '' mean no price
     return float(m.group().replace(",", "")) if m else None
 
 

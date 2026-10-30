@@ -91,7 +91,7 @@
   <div>
     <div class="stage">
       <div class="term">
-        <div class="bar"><i style="background:#FF5F57"></i><i style="background:#FEBC2E"></i><i style="background:#28C840"></i><span style="margin-left:8px">darksight — agent</span></div>
+        <div class="bar"><i style="background:#FF5F57"></i><i style="background:#FEBC2E"></i><i style="background:#28C840"></i><span style="margin-left:8px">darksight · agent</span></div>
         <pre id="log"><span class="dim">Pick a scenario and press “Run live”. The agent's steps stream here.</span></pre>
       </div>
       <div class="card live">
@@ -111,6 +111,7 @@ const logo = (url, cls = "logo-img") => {  // official site icon, loaded at runt
   const host = (() => { try { return new URL(url).hostname; } catch { return ""; } })();
   return el("img", { className: cls, alt: "", src: `https://www.google.com/s2/favicons?domain=${host}&sz=128`, onerror() { this.style.visibility = "hidden"; } });
 };
+const clean = (t) => String(t ?? "").replace(/\s*\u2014\s*/g, ", ");  // no em dashes anywhere on screen
 const inr = (n) => n == null ? "?" : "₹" + Number(n).toLocaleString("en-IN");
 let timer = null;
 const PLATFORM_URL = {};  // platform name -> site, filled from scenarios
@@ -188,7 +189,7 @@ function showReport(rep) {
     r.append(el("div", { className: "find" },
       el("span", { className: "dot", style: `background:${ICON[f.verdict][1]}`, textContent: ICON[f.verdict][0] }),
       el("b", { textContent: f.name }),
-      el("div", { className: "d" }, el("div", { textContent: f.detail }), el("div", { className: "muted", textContent: f.why }))));
+      el("div", { className: "d" }, el("div", { textContent: clean(f.detail) }), el("div", { className: "muted", textContent: f.why }))));
   }
 
   // 3. What the agent did, step by step
@@ -197,17 +198,17 @@ function showReport(rep) {
     const ol = el("ol", { className: "trail" });
     for (const s of steps) {
       ol.append(el("li", {}, el("b", { textContent: `${s.page || "Page"}${s.price_shown_inr != null ? " · " + inr(s.price_shown_inr) : ""}` }),
-        s.note ? el("div", { className: "muted", textContent: s.note }) : ""));
+        s.note ? el("div", { className: "muted", textContent: clean(s.note) }) : ""));
     }
     r.append(el("h2", { textContent: "What the agent saw, step by step", style: "margin-top:18px" }), ol);
   }
-  if ((ev.urgency || []).length) r.append(el("p", { className: "muted", textContent: "Urgency messages seen: " + ev.urgency.join(" · ") }));
+  if ((ev.urgency || []).length) r.append(el("p", { className: "muted", textContent: clean("Urgency messages seen: " + ev.urgency.join(" · ")) }));
   r.append(el("p", { className: "muted", textContent: "Signals for review, not legal conclusions. Evidence: evidence/" + (ev.scenario || "") + ".json" }));
 }
 
 function showFailure(job) {
   const r = $("report"); r.textContent = "";
-  r.append(el("div", { className: "top" }, logo(PLATFORM_URL[job.platform] || "", "logo-img big"),
+  r.append(el("div", { className: "top" }, logo(siteUrl({ platform: job.platform }), "logo-img big"),
     el("div", {}, el("h2", { textContent: "Report card · run failed" }), el("div", { style: "font-size:22px;font-weight:700", textContent: job.platform })),
     el("div", { className: "grade", textContent: "?" })));
   r.append(el("p", { className: "verdict", textContent: "The agent did not finish, so nothing was graded." }),
@@ -218,7 +219,7 @@ function renderLog(job) {
   const pre = $("log"); pre.textContent = "";
   for (const line of job.log) {
     const cls = line.startsWith("✓") || line.startsWith("■") ? "ok" : line.startsWith("✗") ? "bad" : line.startsWith("→") ? "dim" : "";
-    pre.append(el("span", { className: cls, textContent: line + "\n" }));
+    pre.append(el("span", { className: cls, textContent: clean(line) + "\n" }));
   }
   if (job.status === "running") pre.append(el("span", { className: "cursor" }));
   pre.scrollTop = pre.scrollHeight;
