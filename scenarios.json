@@ -15,7 +15,7 @@
     "platform": "Swiggy",
     "category": "Food",
     "url": "https://www.swiggy.com",
-    "goal": "Audit checkout pricing without paying or entering personal data. Set location to Koramangala, Bengaluru. Open the first restaurant, add its cheapest item to cart, open the cart. Record the item price, every fee line (platform, packaging, delivery, small cart, GST) and the final total. Note any pre-selected tip, donation or add-on. Return JSON: steps [{step, page, price_shown_inr, note}], fees [{label, amount_inr}], final_total_inr, urgency [string], preticked [string]."
+    "goal": "Audit checkout pricing without paying or entering personal data. Set location to Koramangala, Bengaluru. Open a popular restaurant (e.g. McDonald's or Domino's), add ONE main dish priced between Rs 100 and Rs 300 to the cart (never sauces, sachets, dips or add-ons), open the cart and read the bill details: item total, delivery fee, platform fee, packaging charge, GST and restaurant charges, and the grand total. Note any pre-selected tip, donation or add-on."
   },
   "streaming_cancel": {
     "platform": "Subscription service",

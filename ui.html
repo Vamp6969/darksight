@@ -239,7 +239,7 @@ function renderLive(url) {
 let lastRun = null;
 function showLoginPrompt(host) {
   const box = el("div", { className: "login" },
-    el("b", { textContent: `🔐 ${host} shows the bill only after you log in` }),
+    el("b", { textContent: `🔐 The agent couldn't reach the bill on ${host}. It probably needs you to log in.` }),
     el("p", { className: "muted", textContent: "Sign in yourself in a TinyFish browser. Your number and OTP go only into TinyFish's page; DarkSight never sees them. Then the agent reruns with your saved session." }));
   const status = el("span", { className: "muted" });
   const signIn = el("button", { textContent: `1 · Sign in to ${host} ↗` });

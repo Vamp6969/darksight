@@ -69,16 +69,13 @@ def normalise(result):
     return ev
 
 
-LOGIN_WORDS = ("login", "log in", "sign in", "sign-in", "otp", "authenticat")
 PROFILES = ROOT / "profiles.json"  # site -> TinyFish Browser Context Profile id (local, gitignored)
 
 
 def needs_login(ev):
-    """True when the agent stopped at a login wall instead of reaching the bill."""
-    if ev.get("final_total_inr"):
-        return False
-    text = json.dumps(ev).lower()
-    return any(w in text for w in LOGIN_WORDS)
+    """Bill not reached: most shops hide it until you log in, so offer 'sign in yourself, then retry'.
+    Skipped when this run already used the saved session."""
+    return not ev.get("final_total_inr") and not ev.get("signed_in")
 
 
 def host_of(url):
@@ -143,7 +140,9 @@ async def run_one(name, sc, on_event=lambda kind, data: None, signed_in=False):
 def discover(query, n=3):
     """TinyFish Search (free) -> candidate sites to audit."""
     hits = TinyFish().search.query(query=query, location="India")
-    return [{"title": r.title, "url": r.url} for r in hits.results[:n]]
+    skip = ("google.", "reddit.", "quora.", "wikipedia.", "youtube.", "apple.com", "facebook.", "instagram.", "linkedin.")
+    shops = [r for r in hits.results if not any(d in host_of(r.url) for d in skip)]  # shops only, not app stores/forums
+    return [{"title": r.title, "url": r.url} for r in shops[:n]]
 
 
 async def audit(jobs):
