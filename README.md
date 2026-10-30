@@ -46,6 +46,7 @@ scenarios.json ──► agent.py ──► TinyFish agents in parallel (Python 
                          detect.py ──► findings + A–F grade
                                        │
                          report.py ──► report_<scenario>.html
+                         app.py    ──► live dashboard: terminal log, live browser view, report card
 ```
 
 ## Run it
@@ -56,6 +57,8 @@ pip install -r requirements.txt
 export TINYFISH_API_KEY=...            # https://agent.tinyfish.ai
 python agent.py                        # all scenarios, agents in parallel -> evidence/*.json
 python agent.py booking_blr            # just one scenario
+python app.py                          # dashboard at http://localhost:8000: run agents live, watch them work
+python agent.py --discover "online grocery delivery Bangalore"   # TinyFish Search finds sites, agents audit them
 python report.py evidence/booking_blr.json   # -> report_booking_blr.html
 python detect.py                       # detector self-check
 ```

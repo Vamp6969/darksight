@@ -1,10 +1,14 @@
 """Send TinyFish agents undercover and save what they see.
 
-    python agent.py                 all scenarios, in parallel -> evidence/*.json
-    python agent.py booking_blr     one scenario
+    python agent.py                         all scenarios, in parallel -> evidence/*.json
+    python agent.py blinkit_blr             one scenario
+    python agent.py --discover "online grocery delivery Bangalore"
+                                            TinyFish Search finds the sites, agents audit them
 """
 import asyncio, json, os, re, sys, time, pathlib
-from tinyfish import AsyncTinyFish, AgentConfig, BrowserProfile, RunStatus
+from urllib.parse import urlparse
+from tinyfish import (TinyFish, AsyncTinyFish, AgentConfig, BrowserProfile,
+                      StreamingUrlEvent, ProgressEvent, CompleteEvent)
 
 if not os.getenv("TINYFISH_API_KEY"):
     sys.exit("Set TINYFISH_API_KEY first (see .env.example).")
@@ -28,6 +32,12 @@ SCHEMA = {  # every platform returns the same evidence fields
             "add-ons that change the total). Empty list if none. NOT payment terms or free perks."},
     },
 }
+GENERIC_GOAL = (  # used for sites found by Search
+    "Audit checkout pricing. Do NOT log in, do NOT pay, do NOT enter personal details. "
+    "If asked for a location, use Koramangala, Bengaluru. Find a cheap product, note its listed price, "
+    "add it to the cart, open the cart or checkout and record every fee line and the final total. "
+    "If a login is required before the bill is shown, stop and say so in the first step's note."
+)
 
 
 def inr(v):
@@ -47,26 +57,54 @@ def normalise(result):
     return ev
 
 
-async def audit(names):
-    agents = AsyncTinyFish()  # reads TINYFISH_API_KEY
-    runs = await asyncio.gather(*[
-        agents.agent.run(
-            url=SCENARIOS[n]["url"], goal=SCENARIOS[n]["goal"], output_schema=SCHEMA,
-            browser_profile=BrowserProfile.STEALTH,  # real shops block plain headless browsers
-            agent_config=AgentConfig(max_duration_seconds=420),
-        ) for n in names], return_exceptions=True)
-    for name, run in zip(names, runs):
-        if isinstance(run, Exception) or run.status != RunStatus.COMPLETED:
-            print(f"! {name}: no result ({run if isinstance(run, Exception) else run.error or run.status})")
-            continue
-        sc = SCENARIOS[name]
-        ev = {"scenario": name, "platform": sc["platform"], "category": sc["category"], "run_id": run.run_id,
-              "agent_steps": run.num_of_steps, "captured_at": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
-              **normalise(run.result or {})}
-        out = ROOT / "evidence" / f"{name}.json"
-        out.write_text(json.dumps(ev, indent=2, ensure_ascii=False))
-        print(f"✓ {name}: {run.num_of_steps} steps -> {out.relative_to(ROOT)}")
+def scenario_for(url):
+    """Ad-hoc scenario for a site found by Search."""
+    host = urlparse(url).netloc.removeprefix("www.")
+    return re.sub(r"\W", "_", host), {"platform": host, "category": "Discovered", "url": url, "goal": GENERIC_GOAL}
+
+
+async def run_one(name, sc, on_event=lambda kind, data: None):
+    """Stream one agent run; on_event('live'|'step', ...) lets the UI follow along."""
+    done, steps = None, 0
+    async with AsyncTinyFish().agent.stream(
+        url=sc["url"], goal=sc["goal"], output_schema=SCHEMA,
+        browser_profile=BrowserProfile.STEALTH,  # real shops block plain headless browsers
+        agent_config=AgentConfig(max_duration_seconds=420),
+    ) as stream:
+        async for e in stream:
+            if isinstance(e, StreamingUrlEvent):
+                on_event("live", e.streaming_url)
+            elif isinstance(e, ProgressEvent):
+                steps += 1
+                on_event("step", e.purpose)
+            elif isinstance(e, CompleteEvent):
+                done = e
+    if done is None or getattr(done.status, "value", done.status) != "COMPLETED":
+        raise RuntimeError(getattr(done, "error", None) or "run did not complete")
+    result = json.loads(done.result_json) if isinstance(done.result_json, str) else (done.result_json or {})
+    ev = {"scenario": name, "platform": sc["platform"], "category": sc["category"], "run_id": done.run_id,
+          "agent_steps": steps, "captured_at": time.strftime("%Y-%m-%dT%H:%M:%S%z"), **normalise(result)}
+    (ROOT / "evidence" / f"{name}.json").write_text(json.dumps(ev, indent=2, ensure_ascii=False))
+    return ev
+
+
+def discover(query, n=3):
+    """TinyFish Search (free) -> candidate sites to audit."""
+    hits = TinyFish().search.query(query=query, location="India")
+    return [{"title": r.title, "url": r.url} for r in hits.results[:n]]
+
+
+async def audit(jobs):
+    runs = await asyncio.gather(*[run_one(n, sc) for n, sc in jobs], return_exceptions=True)
+    for (name, _), r in zip(jobs, runs):
+        print(f"! {name}: {r}" if isinstance(r, Exception) else f"✓ {name}: {r['agent_steps']} steps -> evidence/{name}.json")
 
 
 if __name__ == "__main__":
-    asyncio.run(audit(sys.argv[1:] or list(SCENARIOS)))
+    args = sys.argv[1:]
+    if args[:1] == ["--discover"]:
+        jobs = [scenario_for(h["url"]) for h in discover(" ".join(args[1:]) or "online grocery delivery Bangalore")]
+        print("Search found:", ", ".join(sc["url"] for _, sc in jobs))
+    else:
+        jobs = [(n, SCENARIOS[n]) for n in (args or SCENARIOS)]
+    asyncio.run(audit(jobs))

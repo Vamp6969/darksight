@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DarkSight</title>
+<style>
+  :root { --bg:#0E1015; --card:#1A1D26; --line:#262A36; --tx:#F5F5F4; --mu:#A1A1AA; --or:#FF5A36; --ye:#FACC15; --gr:#22C55E; --term:#07080B; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--tx); font:15px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  header { display:flex; align-items:center; gap:12px; padding:16px 24px; border-bottom:1px solid var(--line); }
+  header .logo { width:34px; height:34px; border-radius:50%; border:2px solid var(--or); display:grid; place-items:center; font-size:18px; }
+  header h1 { font-size:20px; margin:0; }
+  header .by { color:var(--mu); font-size:13px; margin-left:auto; }
+  main { display:grid; grid-template-columns:340px 1fr; gap:20px; padding:20px 24px; }
+  @media (max-width:900px) { main { grid-template-columns:1fr; } }
+  .card { background:var(--card); border-radius:14px; padding:16px; }
+  h2 { font-size:13px; letter-spacing:.08em; text-transform:uppercase; color:var(--mu); margin:0 0 12px; }
+  .sc { display:flex; align-items:center; gap:10px; padding:10px 0; border-top:1px solid var(--line); }
+  .sc:first-of-type { border-top:0; }
+  .sc .meta { flex:1; min-width:0; }
+  .sc .meta b { display:block; }
+  .sc .meta span { color:var(--mu); font-size:13px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:block; }
+  .badge { width:30px; height:30px; border-radius:8px; display:grid; place-items:center; font-weight:800; background:var(--line); }
+  .badge.A,.badge.B { color:var(--gr); } .badge.C { color:var(--ye); } .badge.D,.badge.F { color:var(--or); }
+  button { background:var(--or); color:var(--bg); border:0; border-radius:8px; padding:8px 12px; font-weight:700; cursor:pointer; }
+  button:disabled { opacity:.4; cursor:default; }
+  button.ghost { background:transparent; color:var(--tx); border:1px solid var(--line); }
+  input { width:100%; background:var(--bg); color:var(--tx); border:1px solid var(--line); border-radius:8px; padding:9px 10px; font:inherit; }
+  .row { display:flex; gap:8px; margin-bottom:10px; }
+  .side { display:flex; flex-direction:column; gap:20px; }
+  .stage { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+  @media (max-width:1200px) { .stage { grid-template-columns:1fr; } }
+  .term { background:var(--term); border:1px solid var(--line); border-radius:14px; overflow:hidden; display:flex; flex-direction:column; min-height:360px; }
+  .term .bar { display:flex; align-items:center; gap:7px; padding:10px 14px; border-bottom:1px solid var(--line); color:var(--mu); font-size:12px; }
+  .term .bar i { width:11px; height:11px; border-radius:50%; display:inline-block; }
+  .term pre { margin:0; padding:14px 16px; font:13px/1.6 Menlo, Consolas, monospace; white-space:pre-wrap; overflow:auto; flex:1; max-height:420px; }
+  .ok { color:var(--gr); } .bad { color:var(--or); } .dim { color:var(--mu); }
+  .cursor { display:inline-block; width:8px; height:15px; background:var(--tx); vertical-align:-2px; animation:blink 1s steps(1) infinite; }
+  @keyframes blink { 50% { opacity:0; } }
+  .live { min-height:360px; display:flex; flex-direction:column; }
+  .live iframe { flex:1; width:100%; min-height:320px; border:0; border-radius:10px; background:#000; }
+  .live .empty { flex:1; display:grid; place-items:center; color:var(--mu); text-align:center; border:1px dashed var(--line); border-radius:10px; padding:20px; }
+  .report { margin-top:20px; }
+  .report .top { display:flex; align-items:flex-start; gap:16px; }
+  .report .grade { margin-left:auto; font-size:64px; font-weight:800; line-height:1; color:var(--or); }
+  .find { display:grid; grid-template-columns:28px 170px 1fr; gap:10px; align-items:center; padding:8px 0; }
+  .find .dot { width:22px; height:22px; border-radius:50%; display:grid; place-items:center; color:var(--bg); font-weight:800; font-size:13px; }
+  @media (max-width:600px) { .find { grid-template-columns:28px 1fr; } .find .d { grid-column:2; } }
+  ul.trail { margin:8px 0 0; padding-left:18px; color:var(--mu); }
+  ul.trail b { color:var(--tx); }
+  .muted { color:var(--mu); font-size:13px; }
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">🕵️</div>
+  <h1>DarkSight</h1>
+  <span class="muted">an undercover agent for dark patterns</span>
+  <span class="by">powered by TinyFish web agents · Team Vamp</span>
+</header>
+<main>
+  <div class="side">
+    <section class="card">
+      <h2>Scenarios</h2>
+      <div id="scenarios" class="muted">Loading…</div>
+    </section>
+    <section class="card">
+      <h2>Discover with TinyFish Search</h2>
+      <div class="row">
+        <input id="q" value="online grocery delivery Bangalore" aria-label="Search query">
+        <button id="go" onclick="discover()">Search</button>
+      </div>
+      <div class="row">
+        <input id="url" placeholder="…or paste any shop URL" aria-label="Shop URL">
+        <button class="ghost" onclick="runUrl()">Audit</button>
+      </div>
+      <div id="hits"></div>
+    </section>
+  </div>
+
+  <div>
+    <div class="stage">
+      <div class="term">
+        <div class="bar"><i style="background:#FF5F57"></i><i style="background:#FEBC2E"></i><i style="background:#28C840"></i><span style="margin-left:8px">darksight — agent</span></div>
+        <pre id="log"><span class="dim">Pick a scenario and press “Run live”. The agent's steps stream here.</span></pre>
+      </div>
+      <div class="card live">
+        <h2>Live browser · what the agent sees</h2>
+        <div id="live" class="empty">The TinyFish browser appears here once the agent starts.</div>
+      </div>
+    </div>
+    <section class="card report" id="report"></section>
+  </div>
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const el = (tag, props = {}, ...kids) => { const n = Object.assign(document.createElement(tag), props); n.append(...kids); return n; };
+const ICON = { fail: ["✕", "var(--or)"], warn: ["!", "var(--ye)"], pass: ["✓", "var(--gr)"] };
+const inr = (n) => n == null ? "?" : "₹" + Number(n).toLocaleString("en-IN");
+let timer = null;
+
+async function api(path, body) {
+  const r = await fetch(path, body ? { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) } : {});
+  const data = await r.json();
+  if (!r.ok) throw new Error(data.error || r.statusText);
+  return data;
+}
+
+async function loadScenarios() {
+  const list = await api("/api/scenarios");
+  const box = $("scenarios"); box.textContent = ""; box.classList.remove("muted");
+  for (const s of list) {
+    const grade = s.last ? s.last.grade : "–";
+    box.append(el("div", { className: "sc" },
+      el("div", { className: "badge " + grade, textContent: grade, title: "Last grade" }),
+      el("div", { className: "meta" }, el("b", { textContent: s.platform }), el("span", { textContent: s.category + " · " + s.url })),
+      el("button", { textContent: "Run live ▶", onclick: () => run({ scenario: s.name }) })));
+  }
+  const first = list.find((s) => s.last);
+  if (first && !timer) showReport(first.last);
+}
+
+function showReport({ grade, findings, evidence: ev }) {
+  const r = $("report"); r.textContent = "";
+  r.append(el("div", { className: "top" },
+    el("div", {}, el("h2", { textContent: `Report card · ${ev.category || ""} · run ${String(ev.run_id || "").slice(0, 8)}` }),
+      el("div", { style: "font-size:22px;font-weight:700", textContent: ev.hotel_name || ev.item || ev.platform }),
+      el("div", { className: "muted", textContent: `${ev.platform} · captured ${ev.captured_at || ""} · ${ev.agent_steps || "?"} agent steps` })),
+    el("div", { className: "grade", textContent: grade })));
+  for (const [v, name, detail] of findings) {
+    r.append(el("div", { className: "find" },
+      el("span", { className: "dot", style: `background:${ICON[v][1]}`, textContent: ICON[v][0] }),
+      el("b", { textContent: name }), el("span", { className: "muted d", textContent: detail })));
+  }
+  const trail = (ev.steps || []).filter((s) => s.price_shown_inr != null);
+  if (trail.length) {
+    const ul = el("ul", { className: "trail" });
+    trail.forEach((s, i) => ul.append(el("li", {}, el("b", { textContent: `Step ${s.step || i + 1} · ${inr(s.price_shown_inr)}` }), ` — ${s.page || ""}`)));
+    ul.append(el("li", {}, el("b", { textContent: `Total · ${inr(ev.final_total_inr)}` })));
+    r.append(el("h2", { textContent: "Price trail recorded by the agent", style: "margin-top:14px" }), ul);
+  }
+  r.append(el("p", { className: "muted", textContent: "Signals for review, not legal conclusions." }));
+}
+
+function renderLog(job) {
+  const pre = $("log"); pre.textContent = "";
+  for (const line of job.log) {
+    const cls = line.startsWith("✓") || line.startsWith("■") ? "ok" : line.startsWith("✗") ? "bad" : line.startsWith("→") ? "dim" : "";
+    pre.append(el("span", { className: cls, textContent: line + "\n" }));
+  }
+  if (job.status === "running") pre.append(el("span", { className: "cursor" }));
+  pre.scrollTop = pre.scrollHeight;
+}
+
+function renderLive(url) {
+  const box = $("live");
+  if (!url || box.dataset.url === url) return;
+  box.dataset.url = url; box.className = ""; box.textContent = "";
+  box.append(el("iframe", { src: url, title: "Live TinyFish browser" }),
+    el("a", { href: url, target: "_blank", rel: "noopener", className: "muted", textContent: "Open live view in a new tab ↗", style: "margin-top:8px" }));
+}
+
+async function run(body) {
+  document.querySelectorAll("button").forEach((b) => (b.disabled = true));
+  $("live").className = "empty"; $("live").dataset.url = ""; $("live").textContent = "Starting the TinyFish browser…";
+  try {
+    const job = await api("/api/run", body);
+    timer = setInterval(() => poll(job.id), 1000);
+  } catch (e) { $("log").textContent = "✗ " + e.message; unlock(); }
+}
+
+async function poll(id) {
+  const job = await api("/api/job/" + id);
+  renderLog(job); renderLive(job.live);
+  if (job.status !== "running") {
+    clearInterval(timer); timer = null; unlock();
+    if (job.status === "done") { showReport(job); loadScenarios(); }
+    else if (!job.live) $("live").textContent = "The agent stopped before the browser view was ready.";
+  }
+}
+
+function unlock() { document.querySelectorAll("button").forEach((b) => (b.disabled = false)); }
+
+async function discover() {
+  const hits = $("hits"); hits.textContent = "Searching with TinyFish…";
+  try {
+    const list = await api("/api/discover", { query: $("q").value });
+    hits.textContent = "";
+    for (const h of list) {
+      hits.append(el("div", { className: "sc" },
+        el("div", { className: "meta" }, el("b", { textContent: h.title }), el("span", { textContent: h.url })),
+        el("button", { className: "ghost", textContent: "Audit ▶", onclick: () => run({ url: h.url }) })));
+    }
+    if (!list.length) hits.textContent = "No results.";
+  } catch (e) { hits.textContent = "✗ " + e.message; }
+}
+
+function runUrl() { const u = $("url").value.trim(); if (u) run({ url: u }); }
+
+loadScenarios().catch((e) => ($("scenarios").textContent = "✗ " + e.message));
+</script>
+</body>
+</html>
