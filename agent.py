@@ -10,10 +10,14 @@ from urllib.parse import urlparse
 from tinyfish import (TinyFish, AsyncTinyFish, AgentConfig, BrowserProfile,
                       StreamingUrlEvent, ProgressEvent, CompleteEvent)
 
-if not os.getenv("TINYFISH_API_KEY"):
-    sys.exit("Set TINYFISH_API_KEY first (see .env.example).")
-
 ROOT = pathlib.Path(__file__).parent
+for line in (ROOT / ".env").read_text().splitlines() if (ROOT / ".env").exists() else []:
+    k, _, v = line.partition("=")  # KEY=value lines from the local .env (never committed)
+    if k.strip() and not k.lstrip().startswith("#") and v.strip():
+        os.environ.setdefault(k.strip(), v.strip().strip('"').strip("'"))
+
+if not os.getenv("TINYFISH_API_KEY"):
+    sys.exit("Add your key to darksight/.env as TINYFISH_API_KEY=... (see .env.example).")
 SCENARIOS = json.loads((ROOT / "scenarios.json").read_text())
 SCHEMA = {  # every platform returns the same evidence fields
     "type": "object",

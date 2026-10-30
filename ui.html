@@ -21,6 +21,8 @@
   .sc .meta { flex:1; min-width:0; }
   .sc .meta b { display:block; }
   .sc .meta span { color:var(--mu); font-size:13px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:block; }
+  .logo-img { width:36px; height:36px; border-radius:9px; background:#fff; padding:4px; flex:none; object-fit:contain; }
+  .logo-img.big { width:52px; height:52px; border-radius:12px; padding:6px; }
   .badge { width:30px; height:30px; border-radius:8px; display:grid; place-items:center; font-weight:800; background:var(--line); }
   .badge.A,.badge.B { color:var(--gr); } .badge.C { color:var(--ye); } .badge.D,.badge.F { color:var(--or); }
   button { background:var(--or); color:var(--bg); border:0; border-radius:8px; padding:8px 12px; font-weight:700; cursor:pointer; }
@@ -98,8 +100,13 @@
 const $ = (id) => document.getElementById(id);
 const el = (tag, props = {}, ...kids) => { const n = Object.assign(document.createElement(tag), props); n.append(...kids); return n; };
 const ICON = { fail: ["✕", "var(--or)"], warn: ["!", "var(--ye)"], pass: ["✓", "var(--gr)"] };
+const logo = (url, cls = "logo-img") => {  // official site icon, loaded at runtime (nothing stored in the repo)
+  const host = (() => { try { return new URL(url).hostname; } catch { return ""; } })();
+  return el("img", { className: cls, alt: "", src: `https://www.google.com/s2/favicons?domain=${host}&sz=128`, onerror() { this.style.visibility = "hidden"; } });
+};
 const inr = (n) => n == null ? "?" : "₹" + Number(n).toLocaleString("en-IN");
 let timer = null;
+const PLATFORM_URL = {};  // platform name -> site, filled from scenarios
 
 async function api(path, body) {
   const r = await fetch(path, body ? { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) } : {});
@@ -112,8 +119,10 @@ async function loadScenarios() {
   const list = await api("/api/scenarios");
   const box = $("scenarios"); box.textContent = ""; box.classList.remove("muted");
   for (const s of list) {
+    PLATFORM_URL[s.platform] = s.url;
     const grade = s.last ? s.last.grade : "–";
     box.append(el("div", { className: "sc" },
+      logo(s.url),
       el("div", { className: "badge " + grade, textContent: grade, title: "Last grade" }),
       el("div", { className: "meta" }, el("b", { textContent: s.platform }), el("span", { textContent: s.category + " · " + s.url })),
       el("button", { textContent: "Run live ▶", onclick: () => run({ scenario: s.name }) })));
@@ -125,6 +134,7 @@ async function loadScenarios() {
 function showReport({ grade, findings, evidence: ev }) {
   const r = $("report"); r.textContent = "";
   r.append(el("div", { className: "top" },
+    logo(ev.url || PLATFORM_URL[ev.platform] || "", "logo-img big"),
     el("div", {}, el("h2", { textContent: `Report card · ${ev.category || ""} · run ${String(ev.run_id || "").slice(0, 8)}` }),
       el("div", { style: "font-size:22px;font-weight:700", textContent: ev.hotel_name || ev.item || ev.platform }),
       el("div", { className: "muted", textContent: `${ev.platform} · captured ${ev.captured_at || ""} · ${ev.agent_steps || "?"} agent steps` })),
@@ -190,6 +200,7 @@ async function discover() {
     hits.textContent = "";
     for (const h of list) {
       hits.append(el("div", { className: "sc" },
+        logo(h.url),
         el("div", { className: "meta" }, el("b", { textContent: h.title }), el("span", { textContent: h.url })),
         el("button", { className: "ghost", textContent: "Audit ▶", onclick: () => run({ url: h.url }) })));
     }

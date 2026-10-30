@@ -2,7 +2,7 @@
 
     python app.py      -> http://localhost:8000
 """
-import asyncio, json, pathlib, threading, time, uuid
+import asyncio, json, os, pathlib, threading, time, uuid
 from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 import agent
 from detect import audit
@@ -92,5 +92,6 @@ class Handler(BaseHTTPRequestHandler):
 
 
 if __name__ == "__main__":
-    print("DarkSight dashboard → http://localhost:8000")
-    ThreadingHTTPServer(("127.0.0.1", 8000), Handler).serve_forever()
+    port = int(os.getenv("PORT", 8000))
+    print(f"DarkSight dashboard → http://localhost:{port}")
+    ThreadingHTTPServer(("127.0.0.1", port), Handler).serve_forever()

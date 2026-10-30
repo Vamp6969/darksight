@@ -12,7 +12,7 @@
     "goal": "You are auditing price transparency. Do NOT enter personal details and do NOT pay. 1) On the results page, pick the first hotel and note the price on its card and any '+ taxes and charges' text. 2) Open it, select the cheapest room and click Reserve. 3) Continue to the page that shows the full price breakdown including taxes (still before entering any details) and record every line and the final total. Return JSON: hotel_name, steps [{step, page, price_shown_inr, note}], fees [{label, amount_inr}], final_total_inr, urgency [string], preticked [string]."
   },
   "food_order": {
-    "platform": "Food delivery app",
+    "platform": "Swiggy",
     "category": "Food",
     "url": "https://www.swiggy.com",
     "goal": "Audit checkout pricing without paying or entering personal data. Set location to Koramangala, Bengaluru. Open the first restaurant, add its cheapest item to cart, open the cart. Record the item price, every fee line (platform, packaging, delivery, small cart, GST) and the final total. Note any pre-selected tip, donation or add-on. Return JSON: steps [{step, page, price_shown_inr, note}], fees [{label, amount_inr}], final_total_inr, urgency [string], preticked [string]."

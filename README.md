@@ -54,7 +54,7 @@ scenarios.json ──► agent.py ──► TinyFish agents in parallel (Python 
 ```bash
 python3 -m venv .venv && source .venv/bin/activate   # Python 3.10+
 pip install -r requirements.txt
-export TINYFISH_API_KEY=...            # https://agent.tinyfish.ai
+cp .env.example .env   # then paste your key from https://agent.tinyfish.ai/api-keys
 python agent.py                        # all scenarios, agents in parallel -> evidence/*.json
 python agent.py booking_blr            # just one scenario
 python app.py                          # dashboard at http://localhost:8000: run agents live, watch them work
