@@ -58,6 +58,7 @@ cp .env.example .env   # then paste your key from https://agent.tinyfish.ai/api-
 python agent.py                        # all scenarios, agents in parallel -> evidence/*.json
 python agent.py booking_blr            # just one scenario
 python app.py                          # dashboard at http://localhost:8000: run agents live, watch them work
+python agent.py blinkit_blr --cities bengaluru,mumbai,delhi    # same audit in several cities, in parallel
 python agent.py --discover "online grocery delivery Bangalore"   # TinyFish Search finds sites, agents audit them
 python report.py evidence/booking_blr.json   # -> report_booking_blr.html
 python detect.py                       # detector self-check

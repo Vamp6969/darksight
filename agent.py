@@ -2,6 +2,8 @@
 
     python agent.py                         all scenarios, in parallel -> evidence/*.json
     python agent.py blinkit_blr             one scenario
+    python agent.py blinkit_blr --cities bengaluru,mumbai,delhi
+                                            same audit in several cities, in parallel
     python agent.py --discover "online grocery delivery Bangalore"
                                             TinyFish Search finds the sites, agents audit them
 """
@@ -100,6 +102,22 @@ def login_link(host):
     return {"profile_id": pid, "setup_url": f"https://agent.tinyfish.ai/profiles/{pid}/setup?domain={host}"}
 
 
+CITIES = {  # key -> (delivery area used in goals, city name used in search URLs)
+    "bengaluru": ("Koramangala, Bengaluru", "Bengaluru"),
+    "mumbai": ("Andheri West, Mumbai", "Mumbai"),
+    "delhi": ("Connaught Place, New Delhi", "New Delhi"),
+    "hyderabad": ("HITEC City, Hyderabad", "Hyderabad"),
+}
+
+
+def localize(name, sc, city):
+    """Same scenario, different city: swaps the delivery area / search city. Evidence goes to <name>__<city>.json."""
+    area, town = CITIES[city]
+    swap = lambda t: t.replace("Koramangala, Bengaluru", area).replace("Bengaluru", town)
+    url = sc["url"].replace("Bengaluru", town.replace(" ", "+"))
+    return f"{name}__{city}", {**sc, "url": url, "goal": swap(sc["goal"]), "city": town}
+
+
 def scenario_for(url):
     """Ad-hoc scenario for a site found by Search."""
     host = urlparse(url).netloc.removeprefix("www.")
@@ -132,7 +150,7 @@ async def run_one(name, sc, on_event=lambda kind, data: None, signed_in=False):
         raise RuntimeError(getattr(done, "error", None) or "run did not complete")
     result = json.loads(done.result_json) if isinstance(done.result_json, str) else (done.result_json or {})
     ev = {"scenario": name, "platform": sc["platform"], "category": sc["category"], "run_id": done.run_id,
-          "agent_steps": steps, "signed_in": bool(pid), "captured_at": time.strftime("%Y-%m-%dT%H:%M:%S%z"), **normalise(result)}
+          "agent_steps": steps, "signed_in": bool(pid), "city": sc.get("city", "Bengaluru"), "captured_at": time.strftime("%Y-%m-%dT%H:%M:%S%z"), **normalise(result)}
     (ROOT / "evidence" / f"{name}.json").write_text(json.dumps(ev, indent=2, ensure_ascii=False))
     return ev
 
@@ -156,6 +174,9 @@ if __name__ == "__main__":
     if args[:1] == ["--discover"]:
         jobs = [scenario_for(h["url"]) for h in discover(" ".join(args[1:]) or "online grocery delivery Bangalore")]
         print("Search found:", ", ".join(sc["url"] for _, sc in jobs))
+    elif "--cities" in args:  # python agent.py blinkit_blr --cities bengaluru,mumbai,delhi
+        i = args.index("--cities")
+        jobs = [localize(args[0], SCENARIOS[args[0]], c) for c in args[i + 1].split(",")]
     else:
         jobs = [(n, SCENARIOS[n]) for n in (args or SCENARIOS)]
     asyncio.run(audit(jobs))

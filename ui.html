@@ -58,6 +58,14 @@
   table.bill tr.total td { font-weight:800; font-size:17px; border-top:2px solid var(--mu); }
   .bad { color:var(--or); }
   .badge.Q { color:var(--mu); }
+  select { width:100%; background:var(--bg); color:var(--tx); border:1px solid var(--line); border-radius:8px; padding:9px 10px; font:inherit; }
+  .cities { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px; }
+  .cities label { display:flex; gap:6px; align-items:center; background:var(--bg); border:1px solid var(--line); border-radius:999px; padding:5px 12px; cursor:pointer; }
+  table.cmp { width:100%; border-collapse:collapse; margin-top:8px; }
+  table.cmp th { text-align:left; color:var(--mu); font-size:12px; text-transform:uppercase; letter-spacing:.06em; padding:6px 10px 6px 0; }
+  table.cmp td { border-top:1px solid var(--line); padding:9px 10px 9px 0; vertical-align:middle; }
+  table.cmp td.n { font-weight:700; white-space:nowrap; font-variant-numeric:tabular-nums; }
+  .livelinks a { margin-right:12px; }
   .login { border:1px solid var(--ye); border-radius:12px; padding:14px; margin-bottom:16px; }
   .login p { margin:6px 0 12px; }
   .login .row { flex-wrap:wrap; }
@@ -76,6 +84,13 @@
     <section class="card">
       <h2>Scenarios</h2>
       <div id="scenarios" class="muted">Loading…</div>
+    </section>
+    <section class="card">
+      <h2>Compare across cities</h2>
+      <div class="row"><select id="cmpScenario" aria-label="Scenario to compare"></select></div>
+      <div id="cmpCities" class="cities"></div>
+      <button onclick="compare()">Compare in parallel ▶</button>
+      <p class="muted" style="margin:8px 0 0">One TinyFish agent per city, all at once. Shows whether fees change by location.</p>
     </section>
     <section class="card">
       <h2>Discover with TinyFish Search</h2>
@@ -241,6 +256,71 @@ function renderLive(url) {
     el("a", { href: url, target: "_blank", rel: "noopener", className: "muted", textContent: "Open live view in a new tab ↗", style: "margin-top:8px" }));
 }
 
+async function loadCities() {
+  const [cities, list] = await Promise.all([api("/api/cities"), api("/api/scenarios")]);
+  $("cmpScenario").replaceChildren(...list.map((sc) => el("option", { value: sc.name, textContent: sc.platform })));
+  $("cmpCities").replaceChildren(...Object.entries(cities).map(([k, name], i) =>
+    el("label", {}, el("input", { type: "checkbox", value: k, checked: i < 3 }), name)));
+}
+
+async function compare() {
+  const cities = [...document.querySelectorAll("#cmpCities input:checked")].map((c) => c.value);
+  document.querySelectorAll("button").forEach((b) => (b.disabled = true));
+  $("live").className = "empty"; $("live").dataset.url = ""; $("live").textContent = "Starting one TinyFish browser per city…";
+  try {
+    const g = await api("/api/compare", { scenario: $("cmpScenario").value, cities });
+    timer = setInterval(() => pollGroup(g.id), 1500);
+  } catch (e) { $("log").textContent = "✗ " + e.message; unlock(); }
+}
+
+async function pollGroup(id) {
+  const jobs = await api("/api/group/" + id);
+  const pre = $("log"); pre.textContent = "";
+  for (const j of jobs) {  // one block per city, newest lines only
+    pre.append(el("span", { className: "ok", textContent: `── ${j.city} ──\n` }));
+    for (const line of j.log.slice(-6)) pre.append(el("span", { className: line.startsWith("✗") ? "bad" : "", textContent: clean(line) + "\n" }));
+  }
+  if (jobs.some((j) => j.status === "running")) pre.append(el("span", { className: "cursor" }));
+  const live = jobs.filter((j) => j.live);
+  if (live.length) {
+    renderLive(live[0].live);
+    const links = el("div", { className: "livelinks muted" }, "Watch: ",
+      ...live.map((j) => el("a", { href: j.live, target: "_blank", rel: "noopener", textContent: j.city + " ↗" })));
+    $("live").querySelector(".livelinks")?.remove(); $("live").append(links);
+  }
+  showComparison(jobs);
+  if (jobs.every((j) => j.status !== "running")) { clearInterval(timer); timer = null; unlock(); loadScenarios(); }
+}
+
+function showComparison(jobs) {
+  const r = $("report"); r.textContent = "";
+  r.append(el("div", { className: "top" }, logo(PLATFORM_URL[jobs[0].platform] || "", "logo-img big"),
+    el("div", {}, el("h2", { textContent: "City comparison · same audit, different locations" }),
+      el("div", { style: "font-size:22px;font-weight:700", textContent: jobs[0].platform }))));
+  const t = el("table", { className: "cmp" }, el("tr", {}, ...["City", "Item", "Listed", "Fees added", "You pay", "Markup", "Grade", ""].map((h) => el("th", { textContent: h }))));
+  for (const j of jobs) {
+    if (j.status === "running") { t.append(el("tr", {}, el("td", { textContent: j.city }), el("td", { className: "muted", colSpan: 7, textContent: `running · step ${j.steps}` }))); continue; }
+    if (j.status !== "done") { t.append(el("tr", {}, el("td", { textContent: j.city }), el("td", { className: "bad", colSpan: 7, textContent: clean(j.log[j.log.length - 1]) }))); continue; }
+    const ev = j.evidence;
+    t.append(el("tr", {}, el("td", {}, el("b", { textContent: j.city })), el("td", { textContent: ev.item || ev.hotel_name || "" }),
+      el("td", { className: "n", textContent: inr(j.listed_price) }),
+      el("td", { className: "n bad", textContent: j.fees.length ? "+" + inr(j.fees_sum) : "none" }),
+      el("td", { className: "n", textContent: inr(j.total) }),
+      el("td", { className: "n " + (j.markup_pct > 10 ? "bad" : ""), textContent: j.markup_pct != null ? `${j.markup_pct > 0 ? "+" : ""}${j.markup_pct}%` : "?" }),
+      el("td", {}, el("span", { className: "badge " + j.grade.replace("?", "Q"), textContent: j.grade })),
+      el("td", {}, el("button", { className: "ghost", textContent: "Details", onclick: () => { showReport(j); if (j.needs_login) showLoginPrompt(j.needs_login); } }))));
+  }
+  r.append(t);
+  const done = jobs.filter((j) => j.status === "done" && j.total != null);
+  if (done.length > 1) {
+    const hi = done.reduce((a, b) => (a.total > b.total ? a : b)), lo = done.reduce((a, b) => (a.total < b.total ? a : b));
+    r.append(el("p", { className: "verdict", textContent: hi.total === lo.total
+      ? `Same total in every city: ${inr(hi.total)}.`
+      : `${hi.city} pays ${inr(hi.total - lo.total)} more than ${lo.city} for the same order (${inr(hi.total)} vs ${inr(lo.total)}).` }));
+  }
+  r.append(el("p", { className: "muted", textContent: "Each row is a separate live TinyFish run. Signals for review, not legal conclusions." }));
+}
+
 let lastRun = null;
 function showLoginPrompt(host) {
   const box = el("div", { className: "login" },
@@ -305,6 +385,7 @@ async function discover() {
 function runUrl() { const u = $("url").value.trim(); if (u) run({ url: u }); }
 
 loadScenarios().catch((e) => ($("scenarios").textContent = "✗ " + e.message));
+loadCities().catch(() => {});
 </script>
 </body>
 </html>

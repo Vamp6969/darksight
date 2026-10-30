@@ -11,6 +11,7 @@ from report import complaint
 
 ROOT = pathlib.Path(__file__).parent
 JOBS = {}  # ponytail: in-memory job table, fine for one local user
+GROUPS = {}  # city comparison id -> job ids
 
 
 def summary(ev):
@@ -18,7 +19,7 @@ def summary(ev):
 
 
 def start_job(name, sc, signed_in=False):
-    job = {"id": uuid.uuid4().hex[:8], "name": name, "platform": sc["platform"], "status": "running",
+    job = {"id": uuid.uuid4().hex[:8], "name": name, "platform": sc["platform"], "city": sc.get("city", "Bengaluru"), "status": "running",
            "live": None, "steps": 0, "log": [f"$ python agent.py {name}", f"→ TinyFish agent launched · stealth browser · {sc['url']}"]}
     JOBS[job["id"]] = job
 
@@ -71,12 +72,17 @@ class Handler(BaseHTTPRequestHandler):
             return self.send((ROOT / "ui.html").read_bytes(), "text/html; charset=utf-8")
         if self.path == "/api/scenarios":
             return self.send(scenarios())
+        if self.path == "/api/cities":
+            return self.send({k: v[1] for k, v in agent.CITIES.items()})
         if self.path.startswith("/complaint/"):  # printable complaint letter -> browser "Save as PDF"
             name = self.path.rsplit("/", 1)[-1]
             f = ROOT / "evidence" / f"{name}.json"
             if re.fullmatch(r"\w+", name) and f.exists():
                 return self.send(complaint(json.loads(f.read_text())).encode(), "text/html; charset=utf-8")
             return self.send({"error": "no evidence for that run"}, code=404)
+        if self.path.startswith("/api/group/"):
+            ids = GROUPS.get(self.path.rsplit("/", 1)[-1])
+            return self.send([JOBS[i] for i in ids] if ids else {"error": "unknown comparison"}, code=200 if ids else 404)
         if self.path.startswith("/api/job/"):
             job = JOBS.get(self.path.rsplit("/", 1)[-1])
             return self.send(job or {"error": "unknown job"}, code=200 if job else 404)
@@ -91,6 +97,13 @@ class Handler(BaseHTTPRequestHandler):
             if str(body.get("url", "")).startswith("http"):
                 return self.send(start_job(*agent.scenario_for(body["url"]), signed_in))
             return self.send({"error": "pick a scenario or give an http(s) url"}, code=400)
+        if self.path == "/api/compare":  # same scenario in several cities, agents in parallel
+            name, cities = body.get("scenario"), [c for c in body.get("cities", []) if c in agent.CITIES]
+            if name not in agent.SCENARIOS or len(cities) < 2:
+                return self.send({"error": "pick a scenario and at least two cities"}, code=400)
+            gid = uuid.uuid4().hex[:8]
+            GROUPS[gid] = [start_job(*agent.localize(name, agent.SCENARIOS[name], c))["id"] for c in cities]
+            return self.send({"id": gid, "jobs": GROUPS[gid]})
         if self.path == "/api/login":  # TinyFish sign-in page; the user types their own details there
             try:
                 return self.send(agent.login_link(str(body.get("host", ""))))
