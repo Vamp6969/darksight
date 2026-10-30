@@ -1,4 +1,10 @@
 {
+  "blinkit_blr": {
+    "platform": "Blinkit",
+    "category": "Quick commerce",
+    "url": "https://blinkit.com",
+    "goal": "Audit quick-commerce checkout pricing. Do NOT log in, do NOT pay, do NOT enter personal details. Set location to Koramangala, Bengaluru. Search for 'Bingo Tedhe Medhe' (or any snack under Rs 20), note its price on the product card, add one to the cart, open the cart and read the full bill. Return steps (product page price, then cart total), every fee line (delivery, handling, small cart, platform, GST) and the final total. List any tip, donation or paid add-on that is already selected."
+  },
   "booking_blr": {
     "platform": "Booking.com",
     "category": "Travel",

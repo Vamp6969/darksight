@@ -29,6 +29,12 @@ DarkSight sends a **TinyFish web agent** through real shopping, booking and subs
 
 Report card grade: **C**. These are signals for review, not legal conclusions.
 
+### Blinkit, Koramangala (30 Oct 2026, 15 agent steps, no login)
+
+- Bingo Tedhe Medhe chips listed at **₹16** → cart total **₹43** after a ₹25 delivery charge and ₹2 handling charge → ❌ *drip pricing: +169%*
+
+Swiggy and Zomato were also tried and both require a login before showing the bill.
+
 ## How it works
 
 ```
