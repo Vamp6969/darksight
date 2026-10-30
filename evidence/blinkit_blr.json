@@ -2,38 +2,40 @@
   "scenario": "blinkit_blr",
   "platform": "Blinkit",
   "category": "Quick commerce",
-  "run_id": "7d49dcd6-28f6-4889-a024-8030bbe2467d",
-  "agent_steps": 15,
-  "captured_at": "2026-10-30T11:22:03+0530",
-  "item": "Bingo Tedhe Medhe Masala Tadka Crisps Pouch (70 g)",
+  "run_id": "dc2ae0e1-73e4-4d30-9279-4f38fef898d7",
+  "agent_steps": 25,
+  "signed_in": false,
+  "captured_at": "2026-10-30T14:45:02+0530",
+  "item": "Bingo Tedhe Medhe Masala Tadka Crisps",
   "item_price_inr": 16.0,
   "steps": [
     {
       "step": 1,
-      "page": "Product listing (Koramangala, Bengaluru)",
+      "page": "Search results listing",
       "price_shown_inr": 16.0,
-      "note": "Bingo Tedhe Medhe Masala Tadka Crisps 70 g at ₹16"
+      "note": "Listed price before add to cart; ₹16 MRP ₹20 with 20% OFF, 70g pack"
     },
     {
       "step": 2,
-      "page": "Cart · bill details",
-      "price_shown_inr": 43.0,
-      "note": "Delivery charge ₹25 + Handling charge ₹2 added in the cart"
+      "page": "Cart/Bill modal",
+      "price_shown_inr": 16.0,
+      "note": "Bill after adding 1 unit to cart showing item total and charges"
     }
   ],
   "fees": [
     {
       "label": "Delivery charge",
-      "amount_inr": 25,
-      "late": true
+      "amount_inr": 25
     },
     {
       "label": "Handling charge",
-      "amount_inr": 2,
-      "late": true
+      "amount_inr": 2
     }
   ],
   "final_total_inr": 43.0,
-  "urgency": [],
+  "urgency": [
+    "22 MINS delivery estimate",
+    "20% OFF label"
+  ],
   "preticked": []
 }

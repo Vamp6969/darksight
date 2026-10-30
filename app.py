@@ -4,8 +4,10 @@
 """
 import asyncio, json, os, pathlib, threading, time, uuid
 from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
+import re
 import agent
 from detect import report
+from report import complaint
 
 ROOT = pathlib.Path(__file__).parent
 JOBS = {}  # ponytail: in-memory job table, fine for one local user
@@ -69,6 +71,12 @@ class Handler(BaseHTTPRequestHandler):
             return self.send((ROOT / "ui.html").read_bytes(), "text/html; charset=utf-8")
         if self.path == "/api/scenarios":
             return self.send(scenarios())
+        if self.path.startswith("/complaint/"):  # printable complaint letter -> browser "Save as PDF"
+            name = self.path.rsplit("/", 1)[-1]
+            f = ROOT / "evidence" / f"{name}.json"
+            if re.fullmatch(r"\w+", name) and f.exists():
+                return self.send(complaint(json.loads(f.read_text())).encode(), "text/html; charset=utf-8")
+            return self.send({"error": "no evidence for that run"}, code=404)
         if self.path.startswith("/api/job/"):
             job = JOBS.get(self.path.rsplit("/", 1)[-1])
             return self.send(job or {"error": "unknown job"}, code=200 if job else 404)

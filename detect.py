@@ -1,4 +1,5 @@
 """Turn agent evidence into findings mapped to India's CCPA dark-pattern list (2023)."""
+import re
 
 FAIL, WARN, PASS = "fail", "warn", "pass"
 
@@ -58,11 +59,15 @@ def drip_pricing(ev):
         f"₹{first:,.0f} → ₹{total:,.0f} (+{jump:.0f}%) at the last step; added: {late}"
 
 
+ETA = re.compile(r"\b\d+\s*(min|mins|minutes|hrs?|hours?)\b|deliver(y|ed) (in|by|time)|arriv", re.I)
+
+
 def false_urgency(ev, rerun=None):
-    msgs = [m if len(m) < 70 else m[:67] + "…" for m in ev.get("urgency", [])]
+    claims = [m for m in ev.get("urgency", []) if not ETA.search(m)]  # delivery ETAs are information, not pressure
+    msgs = [m if len(m) < 70 else m[:67] + "…" for m in claims]
     if not msgs:
         return PASS, "False urgency", "No urgency claims"
-    if rerun is not None and set(ev["urgency"]) == set(rerun.get("urgency", [])):
+    if rerun is not None and set(claims) == set(rerun.get("urgency", [])):
         return FAIL, "False urgency", f"Same claim after re-run: “{msgs[0]}”"
     return WARN, "False urgency", f"Urgency claim seen: “{msgs[0]}” (re-run to verify)"
 
@@ -118,6 +123,8 @@ if __name__ == "__main__":
     assert drip_pricing({"item_price_inr": 1749, "steps": [{"price_shown_inr": 1917}], "final_total_inr": 1836.8})[0] == WARN
     assert audit({"urgency": [], "final_total_inr": 100, "item_price_inr": 100})[0] == "A"
     assert drip_pricing({"item_price_inr": 16, "final_total_inr": 43, "steps": []})[0] == FAIL  # no step list needed
+    assert false_urgency({"urgency": ["22 MINS delivery estimate"]})[0] == PASS
+    assert false_urgency({"urgency": ["Only 1 room left"]})[0] == WARN
     assert audit({"steps": [{"note": "Login required"}]}) == ("?", [(WARN, "Bill not reached", "Login required")])
     r = report({"item_price_inr": 16, "final_total_inr": 43, "fees": [{"label": "Item total", "amount_inr": 16},
                {"label": "Delivery charge", "amount_inr": 25}, {"label": "Handling charge", "amount_inr": 2}]})

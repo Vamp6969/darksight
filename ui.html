@@ -165,6 +165,11 @@ function showReport(rep) {
       el("div", { className: "muted", textContent: `${ev.platform} · captured ${ev.captured_at || ""} · ${ev.agent_steps || "?"} agent steps${ev.signed_in ? " · signed in with your saved session" : ""}` })),
     el("div", { className: "grade", textContent: grade })));
   r.append(el("p", { className: "verdict", textContent: VERDICT_TEXT[grade] || "" }));
+  if (rep.total != null && ev.scenario) {
+    r.append(el("div", { className: "row", style: "margin-top:12px" },
+      el("button", { textContent: "📄 Complaint draft (PDF)", onclick: () => window.open("/complaint/" + encodeURIComponent(ev.scenario), "_blank") }),
+      el("span", { className: "muted", style: "align-self:center", textContent: "Pre-filled for the National Consumer Helpline. Review before filing." })));
+  }
 
   // 1. Price breakdown
   if (rep.total != null) {
