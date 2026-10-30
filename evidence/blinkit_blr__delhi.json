@@ -1,0 +1,55 @@
+{
+  "scenario": "blinkit_blr__delhi",
+  "platform": "Blinkit",
+  "category": "Quick commerce",
+  "run_id": "6839de66-b68e-4bc9-9066-be7b0da2c25c",
+  "agent_steps": 18,
+  "signed_in": false,
+  "city": "New Delhi",
+  "captured_at": "2026-10-30T15:40:16+0530",
+  "item": "Bingo Tedhe Medhe Masala Tadka Crisps (70 g)",
+  "item_price_inr": 16.0,
+  "steps": [
+    {
+      "step": 1,
+      "page": "Product Listing Page",
+      "price_shown_inr": 16.0,
+      "note": "Bingo Tedhe Medhe Masala Tadka Crisps 70 g listed at ₹16 (MRP ₹20, 20% OFF). No scarcity/urgency messages found."
+    },
+    {
+      "step": 2,
+      "page": "Cart / Bill Details",
+      "price_shown_inr": 43.0,
+      "note": "After adding 1 unit to cart, bill breakdown shown."
+    }
+  ],
+  "fees": [
+    {
+      "label": "Item Total",
+      "amount_inr": 16
+    },
+    {
+      "label": "Delivery charge",
+      "amount_inr": 25
+    },
+    {
+      "label": "Handling charge",
+      "amount_inr": 2
+    },
+    {
+      "label": "Small cart fee",
+      "amount_inr": 0
+    },
+    {
+      "label": "Other fees",
+      "amount_inr": 0
+    },
+    {
+      "label": "Subtotal check",
+      "amount_inr": 16
+    }
+  ],
+  "final_total_inr": 43.0,
+  "urgency": [],
+  "preticked": []
+}

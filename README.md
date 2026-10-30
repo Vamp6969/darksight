@@ -35,6 +35,14 @@ Report card grade: **C**. These are signals for review, not legal conclusions.
 
 Swiggy and Zomato were also tried and both require a login before showing the bill.
 
+### Same order, three cities (30 Oct 2026, agents in parallel)
+
+| City | Listed | Fees added | You pay |
+|---|---|---|---|
+| Bengaluru | ₹16 | ₹25 delivery + ₹2 handling + **₹30 rain surge** | **₹73 (+356%)** |
+| Mumbai | ₹16 | ₹25 delivery + ₹2 handling | ₹43 (+169%) |
+| New Delhi | ₹16 | ₹25 delivery + ₹2 handling | ₹43 (+169%) |
+
 ## How it works
 
 ```
