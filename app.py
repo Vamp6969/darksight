@@ -5,15 +5,14 @@
 import asyncio, json, os, pathlib, threading, time, uuid
 from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 import agent
-from detect import audit
+from detect import report
 
 ROOT = pathlib.Path(__file__).parent
 JOBS = {}  # ponytail: in-memory job table, fine for one local user
 
 
 def summary(ev):
-    grade, findings = audit(ev)
-    return {"grade": grade, "findings": findings, "evidence": ev}
+    return report(ev)
 
 
 def start_job(name, sc):

@@ -21,21 +21,28 @@ if not os.getenv("TINYFISH_API_KEY"):
 SCENARIOS = json.loads((ROOT / "scenarios.json").read_text())
 SCHEMA = {  # every platform returns the same evidence fields
     "type": "object",
+    "required": ["item", "item_price_inr", "fees", "final_total_inr", "steps"],
     "properties": {
+        "item": {"type": "string"},
+        "item_price_inr": {"type": "string"},
         "steps": {"type": "array", "items": {"type": "object", "properties": {
             "step": {"type": "integer"}, "page": {"type": "string"},
             "price_shown_inr": {"type": "string"}, "note": {"type": "string"}}}},
         "fees": {"type": "array", "items": {"type": "object", "properties": {
             "label": {"type": "string"}, "amount_inr": {"type": "number"}}}},
-        "final_total_inr": {"type": "string", "description":
-            "The final amount payable INCLUDING all taxes and fees, read from the last page before payment"},
-        "urgency": {"type": "array", "items": {"type": "string"}, "description":
-            "Scarcity or time-pressure claims, e.g. 'Only 1 left', countdown timers, 'deal ends soon'"},
-        "preticked": {"type": "array", "items": {"type": "string"}, "description":
-            "Paid extras already selected without the user choosing them (insurance, tips, donations, "
-            "add-ons that change the total). Empty list if none. NOT payment terms or free perks."},
+        "final_total_inr": {"type": "string"},
+        "urgency": {"type": "array", "items": {"type": "string"}},
+        "preticked": {"type": "array", "items": {"type": "string"}},
     },
 }
+FIELD_RULES = (  # TinyFish schemas take no descriptions, so the field meanings go in the goal
+    " Field rules: item is the product or room you picked and item_price_inr its price as first listed. "
+    "steps must contain one entry per page you priced (at least the listing price and the final bill). "
+    "fees must list every fee, charge or tax line on the bill with its amount. final_total_inr is the amount payable INCLUDING all taxes and fees on the last page before "
+    "payment. urgency lists scarcity or time-pressure claims (e.g. 'Only 1 left', countdown timers). preticked "
+    "lists only PAID extras already selected without the user choosing them (insurance, tips, donations, add-ons "
+    "that change the total); leave it empty if none, and never include payment terms or free perks."
+)
 GENERIC_GOAL = (  # used for sites found by Search
     "Audit checkout pricing. Do NOT log in, do NOT pay, do NOT enter personal details. "
     "If asked for a location, use Koramangala, Bengaluru. Find a cheap product, note its listed price, "
@@ -57,6 +64,7 @@ def normalise(result):
     for s in ev.get("steps", []):
         s["price_shown_inr"] = inr(s.get("price_shown_inr"))
     ev["final_total_inr"] = inr(ev.get("final_total_inr"))
+    ev["item_price_inr"] = inr(ev.get("item_price_inr"))
     ev["urgency"] = ev.pop("urgency_messages", ev.get("urgency", []))
     return ev
 
@@ -71,7 +79,7 @@ async def run_one(name, sc, on_event=lambda kind, data: None):
     """Stream one agent run; on_event('live'|'step', ...) lets the UI follow along."""
     done, steps = None, 0
     async with AsyncTinyFish().agent.stream(
-        url=sc["url"], goal=sc["goal"], output_schema=SCHEMA,
+        url=sc["url"], goal=sc["goal"] + FIELD_RULES, output_schema=SCHEMA,
         browser_profile=BrowserProfile.STEALTH,  # real shops block plain headless browsers
         agent_config=AgentConfig(max_duration_seconds=420),
     ) as stream:

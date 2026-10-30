@@ -3,7 +3,7 @@
     "platform": "Blinkit",
     "category": "Quick commerce",
     "url": "https://blinkit.com",
-    "goal": "Audit quick-commerce checkout pricing. Do NOT log in, do NOT pay, do NOT enter personal details. Set location to Koramangala, Bengaluru. Search for 'Bingo Tedhe Medhe' (or any snack under Rs 20), note its price on the product card, add one to the cart, open the cart and read the full bill. Return steps (product page price, then cart total), every fee line (delivery, handling, small cart, platform, GST) and the final total. List any tip, donation or paid add-on that is already selected."
+    "goal": "Audit quick-commerce checkout pricing. Do NOT log in, do NOT pay, do NOT enter personal details. Set location to Koramangala, Bengaluru. Use the search box to search exactly 'Bingo Tedhe Medhe'. Pick a Bingo Tedhe Medhe chips pack (if unavailable, pick any chips or biscuit pack under Rs 30; never medicines or health products). Note its listed price, add ONE to the cart, open the cart and read the bill details section. Record each bill line separately: item total, delivery charge, handling charge, small cart fee, any other fee, and the grand total. Check that the lines add up to the grand total."
   },
   "booking_blr": {
     "platform": "Booking.com",

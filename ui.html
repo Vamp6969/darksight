@@ -46,11 +46,18 @@
   .report { margin-top:20px; }
   .report .top { display:flex; align-items:flex-start; gap:16px; }
   .report .grade { margin-left:auto; font-size:64px; font-weight:800; line-height:1; color:var(--or); }
-  .find { display:grid; grid-template-columns:28px 170px 1fr; gap:10px; align-items:center; padding:8px 0; }
+  .find { display:grid; grid-template-columns:28px 170px 1fr; gap:10px; align-items:start; padding:10px 0; border-top:1px solid var(--line); }
   .find .dot { width:22px; height:22px; border-radius:50%; display:grid; place-items:center; color:var(--bg); font-weight:800; font-size:13px; }
   @media (max-width:600px) { .find { grid-template-columns:28px 1fr; } .find .d { grid-column:2; } }
-  ul.trail { margin:8px 0 0; padding-left:18px; color:var(--mu); }
-  ul.trail b { color:var(--tx); }
+  .trail { margin:8px 0 0; padding-left:20px; }
+  .trail li { margin:6px 0; }
+  .verdict { font-size:17px; margin:10px 0 0; }
+  table.bill { width:100%; border-collapse:collapse; }
+  table.bill td { padding:8px 10px 8px 0; border-top:1px solid var(--line); vertical-align:top; }
+  table.bill td.amt { white-space:nowrap; font-variant-numeric:tabular-nums; font-weight:700; text-align:right; padding-right:16px; }
+  table.bill tr.total td { font-weight:800; font-size:17px; border-top:2px solid var(--mu); }
+  .bad { color:var(--or); }
+  .badge.Q { color:var(--mu); }
   .muted { color:var(--mu); font-size:13px; }
 </style>
 </head>
@@ -115,43 +122,96 @@ async function api(path, body) {
   return data;
 }
 
+let initialReportShown = false;
 async function loadScenarios() {
   const list = await api("/api/scenarios");
   const box = $("scenarios"); box.textContent = ""; box.classList.remove("muted");
   for (const s of list) {
     PLATFORM_URL[s.platform] = s.url;
     const grade = s.last ? s.last.grade : "–";
-    box.append(el("div", { className: "sc" },
-      logo(s.url),
-      el("div", { className: "badge " + grade, textContent: grade, title: "Last grade" }),
-      el("div", { className: "meta" }, el("b", { textContent: s.platform }), el("span", { textContent: s.category + " · " + s.url })),
+    const meta = el("div", { className: "meta", title: s.last ? "Show last report" : "" },
+      el("b", { textContent: s.platform }), el("span", { textContent: s.category + " · " + s.url }));
+    if (s.last) { meta.style.cursor = "pointer"; meta.onclick = () => showReport(s.last); }
+    box.append(el("div", { className: "sc" }, logo(s.url),
+      el("div", { className: "badge " + grade.replace("?", "Q"), textContent: grade, title: "Last grade" }), meta,
       el("button", { textContent: "Run live ▶", onclick: () => run({ scenario: s.name }) })));
   }
-  const first = list.find((s) => s.last);
-  if (first && !timer) showReport(first.last);
+  if (!initialReportShown) {  // only on first load; never overwrite the report of a run that just finished
+    const first = list.find((s) => s.last && s.last.grade !== "?");
+    if (first) showReport(first.last);
+    initialReportShown = true;
+  }
 }
 
-function showReport({ grade, findings, evidence: ev }) {
+const VERDICT_TEXT = {
+  A: "No dark patterns found in this flow.", B: "Minor issues worth a look.",
+  C: "Dark-pattern signals found. Review recommended.", D: "Serious dark-pattern signals found.",
+  F: "Multiple serious dark patterns found.", "?": "The agent could not reach the final bill, so pricing was not graded.",
+};
+
+function siteUrl(ev) { return PLATFORM_URL[ev.platform] || (ev.platform && ev.platform.includes(".") ? "https://" + ev.platform : ""); }
+
+function showReport(rep) {
+  const { grade, evidence: ev } = rep;
   const r = $("report"); r.textContent = "";
   r.append(el("div", { className: "top" },
-    logo(ev.url || PLATFORM_URL[ev.platform] || "", "logo-img big"),
+    logo(siteUrl(ev), "logo-img big"),
     el("div", {}, el("h2", { textContent: `Report card · ${ev.category || ""} · run ${String(ev.run_id || "").slice(0, 8)}` }),
       el("div", { style: "font-size:22px;font-weight:700", textContent: ev.hotel_name || ev.item || ev.platform }),
       el("div", { className: "muted", textContent: `${ev.platform} · captured ${ev.captured_at || ""} · ${ev.agent_steps || "?"} agent steps` })),
     el("div", { className: "grade", textContent: grade })));
-  for (const [v, name, detail] of findings) {
+  r.append(el("p", { className: "verdict", textContent: VERDICT_TEXT[grade] || "" }));
+
+  // 1. Price breakdown
+  if (rep.total != null) {
+    r.append(el("h2", { textContent: "Price breakdown", style: "margin-top:18px" }));
+    const t = el("table", { className: "bill" });
+    t.append(el("tr", {}, el("td", { textContent: "Price shown when the item was picked" }), el("td", { className: "amt", textContent: inr(rep.listed_price) }), el("td")));
+    for (const f of rep.fees) {
+      t.append(el("tr", {}, el("td", {}, el("b", { textContent: "+ " + f.label })), el("td", { className: "amt bad", textContent: inr(f.amount_inr) }),
+        el("td", { className: "muted", textContent: f.explanation })));
+    }
+    const gap = rep.listed_price != null ? rep.total - rep.listed_price - rep.fees_sum : 0;
+    if (rep.listed_price != null && Math.abs(gap) >= 1) {
+      t.append(el("tr", {}, el("td", {}, el("b", { textContent: gap > 0 ? "+ Unexplained difference" : "− Discount / other" })),
+        el("td", { className: "amt " + (gap > 0 ? "bad" : ""), textContent: inr(Math.abs(gap)) }),
+        el("td", { className: "muted", textContent: gap > 0 ? "The bill total is higher than the listed price plus the fees the agent could read." : "The bill total is lower than the listed price plus fees." })));
+    }
+    t.append(el("tr", { className: "total" }, el("td", { textContent: "You pay" }), el("td", { className: "amt", textContent: inr(rep.total) }),
+      el("td", { className: rep.markup_pct > 10 ? "bad" : "muted", textContent: rep.markup_pct != null ? `${rep.markup_pct > 0 ? "+" : ""}${rep.markup_pct}% vs the listed price` : "" })));
+    r.append(t);
+  }
+
+  // 2. Findings, each with why it matters
+  r.append(el("h2", { textContent: "Findings", style: "margin-top:18px" }));
+  for (const f of rep.findings) {
     r.append(el("div", { className: "find" },
-      el("span", { className: "dot", style: `background:${ICON[v][1]}`, textContent: ICON[v][0] }),
-      el("b", { textContent: name }), el("span", { className: "muted d", textContent: detail })));
+      el("span", { className: "dot", style: `background:${ICON[f.verdict][1]}`, textContent: ICON[f.verdict][0] }),
+      el("b", { textContent: f.name }),
+      el("div", { className: "d" }, el("div", { textContent: f.detail }), el("div", { className: "muted", textContent: f.why }))));
   }
-  const trail = (ev.steps || []).filter((s) => s.price_shown_inr != null);
-  if (trail.length) {
-    const ul = el("ul", { className: "trail" });
-    trail.forEach((s, i) => ul.append(el("li", {}, el("b", { textContent: `Step ${s.step || i + 1} · ${inr(s.price_shown_inr)}` }), ` — ${s.page || ""}`)));
-    ul.append(el("li", {}, el("b", { textContent: `Total · ${inr(ev.final_total_inr)}` })));
-    r.append(el("h2", { textContent: "Price trail recorded by the agent", style: "margin-top:14px" }), ul);
+
+  // 3. What the agent did, step by step
+  const steps = ev.steps || [];
+  if (steps.length) {
+    const ol = el("ol", { className: "trail" });
+    for (const s of steps) {
+      ol.append(el("li", {}, el("b", { textContent: `${s.page || "Page"}${s.price_shown_inr != null ? " · " + inr(s.price_shown_inr) : ""}` }),
+        s.note ? el("div", { className: "muted", textContent: s.note }) : ""));
+    }
+    r.append(el("h2", { textContent: "What the agent saw, step by step", style: "margin-top:18px" }), ol);
   }
-  r.append(el("p", { className: "muted", textContent: "Signals for review, not legal conclusions." }));
+  if ((ev.urgency || []).length) r.append(el("p", { className: "muted", textContent: "Urgency messages seen: " + ev.urgency.join(" · ") }));
+  r.append(el("p", { className: "muted", textContent: "Signals for review, not legal conclusions. Evidence: evidence/" + (ev.scenario || "") + ".json" }));
+}
+
+function showFailure(job) {
+  const r = $("report"); r.textContent = "";
+  r.append(el("div", { className: "top" }, logo(PLATFORM_URL[job.platform] || "", "logo-img big"),
+    el("div", {}, el("h2", { textContent: "Report card · run failed" }), el("div", { style: "font-size:22px;font-weight:700", textContent: job.platform })),
+    el("div", { className: "grade", textContent: "?" })));
+  r.append(el("p", { className: "verdict", textContent: "The agent did not finish, so nothing was graded." }),
+    el("p", { className: "muted", textContent: job.log[job.log.length - 1] || "" }));
 }
 
 function renderLog(job) {
@@ -186,8 +246,9 @@ async function poll(id) {
   renderLog(job); renderLive(job.live);
   if (job.status !== "running") {
     clearInterval(timer); timer = null; unlock();
-    if (job.status === "done") { showReport(job); loadScenarios(); }
-    else if (!job.live) $("live").textContent = "The agent stopped before the browser view was ready.";
+    if (job.status === "done") showReport(job); else showFailure(job);
+    if (job.status !== "done" && !job.live) $("live").textContent = "The agent stopped before the browser view was ready.";
+    loadScenarios();
   }
 }
 
