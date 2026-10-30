@@ -5,7 +5,7 @@
     python agent.py --discover "online grocery delivery Bangalore"
                                             TinyFish Search finds the sites, agents audit them
 """
-import asyncio, json, os, re, sys, time, pathlib
+import asyncio, json, os, re, sys, time, pathlib, urllib.request
 from urllib.parse import urlparse
 from tinyfish import (TinyFish, AsyncTinyFish, AgentConfig, BrowserProfile,
                       StreamingUrlEvent, ProgressEvent, CompleteEvent)
@@ -69,17 +69,57 @@ def normalise(result):
     return ev
 
 
+LOGIN_WORDS = ("login", "log in", "sign in", "sign-in", "otp", "authenticat")
+PROFILES = ROOT / "profiles.json"  # site -> TinyFish Browser Context Profile id (local, gitignored)
+
+
+def needs_login(ev):
+    """True when the agent stopped at a login wall instead of reaching the bill."""
+    if ev.get("final_total_inr"):
+        return False
+    text = json.dumps(ev).lower()
+    return any(w in text for w in LOGIN_WORDS)
+
+
+def host_of(url):
+    return urlparse(url).netloc.removeprefix("www.")
+
+
+def profile_for(host):
+    """Saved profile id for a site, or None."""
+    return json.loads(PROFILES.read_text()).get(host) if PROFILES.exists() else None
+
+
+def login_link(host):
+    """Create (once) a TinyFish profile for the site and return the page where the user signs in themselves."""
+    pid = profile_for(host)
+    if not pid:
+        req = urllib.request.Request("https://agent.tinyfish.ai/v1/profiles", method="POST",
+            data=json.dumps({"name": f"DarkSight {host}"[:100], "proxy_country_code": "IN"}).encode(),
+            headers={"X-API-Key": os.environ["TINYFISH_API_KEY"], "Content-Type": "application/json"})
+        pid = json.load(urllib.request.urlopen(req, timeout=30))["id"]
+        saved = json.loads(PROFILES.read_text()) if PROFILES.exists() else {}
+        PROFILES.write_text(json.dumps({**saved, host: pid}, indent=2))
+    return {"profile_id": pid, "setup_url": f"https://agent.tinyfish.ai/profiles/{pid}/setup?domain={host}"}
+
+
 def scenario_for(url):
     """Ad-hoc scenario for a site found by Search."""
     host = urlparse(url).netloc.removeprefix("www.")
     return re.sub(r"\W", "_", host), {"platform": host, "category": "Discovered", "url": url, "goal": GENERIC_GOAL}
 
 
-async def run_one(name, sc, on_event=lambda kind, data: None):
-    """Stream one agent run; on_event('live'|'step', ...) lets the UI follow along."""
+async def run_one(name, sc, on_event=lambda kind, data: None, signed_in=False):
+    """Stream one agent run; on_event('live'|'step', ...) lets the UI follow along.
+    signed_in=True reuses the user's saved TinyFish profile for this site (they logged in themselves)."""
     done, steps = None, 0
-    async with AsyncTinyFish().agent.stream(
-        url=sc["url"], goal=sc["goal"] + FIELD_RULES, output_schema=SCHEMA,
+    pid = profile_for(host_of(sc["url"])) if signed_in else None
+    login = dict(use_profile=True, profile_id=pid) if pid else {}
+    goal = sc["goal"] + FIELD_RULES
+    if pid:  # the saved session is already logged in, so the agent may go past the login wall now
+        goal = goal.replace("Do NOT log in, ", "You are already signed in with the user's own saved session; do not sign in again. ")
+    async with AsyncTinyFish().agent.stream(**login,
+        url=sc["url"], goal=goal, output_schema=SCHEMA,
         browser_profile=BrowserProfile.STEALTH,  # real shops block plain headless browsers
         agent_config=AgentConfig(max_duration_seconds=420),
     ) as stream:
@@ -95,7 +135,7 @@ async def run_one(name, sc, on_event=lambda kind, data: None):
         raise RuntimeError(getattr(done, "error", None) or "run did not complete")
     result = json.loads(done.result_json) if isinstance(done.result_json, str) else (done.result_json or {})
     ev = {"scenario": name, "platform": sc["platform"], "category": sc["category"], "run_id": done.run_id,
-          "agent_steps": steps, "captured_at": time.strftime("%Y-%m-%dT%H:%M:%S%z"), **normalise(result)}
+          "agent_steps": steps, "signed_in": bool(pid), "captured_at": time.strftime("%Y-%m-%dT%H:%M:%S%z"), **normalise(result)}
     (ROOT / "evidence" / f"{name}.json").write_text(json.dumps(ev, indent=2, ensure_ascii=False))
     return ev
 

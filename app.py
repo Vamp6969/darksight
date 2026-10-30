@@ -15,7 +15,7 @@ def summary(ev):
     return report(ev)
 
 
-def start_job(name, sc):
+def start_job(name, sc, signed_in=False):
     job = {"id": uuid.uuid4().hex[:8], "name": name, "platform": sc["platform"], "status": "running",
            "live": None, "steps": 0, "log": [f"$ python agent.py {name}", f"→ TinyFish agent launched · stealth browser · {sc['url']}"]}
     JOBS[job["id"]] = job
@@ -31,8 +31,11 @@ def start_job(name, sc):
     def work():
         t = time.time()
         try:
-            ev = asyncio.run(agent.run_one(name, sc, on_event))
+            ev = asyncio.run(agent.run_one(name, sc, on_event, signed_in))
             job.update(status="done", **summary(ev))
+            if agent.needs_login(ev):  # hit a login wall: the UI offers "sign in yourself, then retry"
+                job["needs_login"] = agent.host_of(sc["url"])
+                job["log"].append(f"🔐 {job['needs_login']} needs a login before it shows the bill")
             job["log"].append(f"■ stopped before payment · {ev['agent_steps']} steps · {time.time() - t:.0f}s")
             job["log"].append(f"✓ saved evidence/{name}.json · grade {job['grade']}")
         except Exception as e:
@@ -74,11 +77,17 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self):
         body = json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0))) or b"{}")
         if self.path == "/api/run":
+            signed_in = bool(body.get("signed_in"))
             if body.get("scenario") in agent.SCENARIOS:
-                return self.send(start_job(body["scenario"], agent.SCENARIOS[body["scenario"]]))
+                return self.send(start_job(body["scenario"], agent.SCENARIOS[body["scenario"]], signed_in))
             if str(body.get("url", "")).startswith("http"):
-                return self.send(start_job(*agent.scenario_for(body["url"])))
+                return self.send(start_job(*agent.scenario_for(body["url"]), signed_in))
             return self.send({"error": "pick a scenario or give an http(s) url"}, code=400)
+        if self.path == "/api/login":  # TinyFish sign-in page; the user types their own details there
+            try:
+                return self.send(agent.login_link(str(body.get("host", ""))))
+            except Exception as e:
+                return self.send({"error": f"could not create a TinyFish profile: {e}"}, code=502)
         if self.path == "/api/discover":
             try:
                 return self.send(agent.discover(body.get("query") or "online grocery delivery Bangalore", n=5))

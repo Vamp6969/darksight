@@ -58,6 +58,9 @@
   table.bill tr.total td { font-weight:800; font-size:17px; border-top:2px solid var(--mu); }
   .bad { color:var(--or); }
   .badge.Q { color:var(--mu); }
+  .login { border:1px solid var(--ye); border-radius:12px; padding:14px; margin-bottom:16px; }
+  .login p { margin:6px 0 12px; }
+  .login .row { flex-wrap:wrap; }
   .muted { color:var(--mu); font-size:13px; }
 </style>
 </head>
@@ -159,7 +162,7 @@ function showReport(rep) {
     logo(siteUrl(ev), "logo-img big"),
     el("div", {}, el("h2", { textContent: `Report card · ${ev.category || ""} · run ${String(ev.run_id || "").slice(0, 8)}` }),
       el("div", { style: "font-size:22px;font-weight:700", textContent: ev.hotel_name || ev.item || ev.platform }),
-      el("div", { className: "muted", textContent: `${ev.platform} · captured ${ev.captured_at || ""} · ${ev.agent_steps || "?"} agent steps` })),
+      el("div", { className: "muted", textContent: `${ev.platform} · captured ${ev.captured_at || ""} · ${ev.agent_steps || "?"} agent steps${ev.signed_in ? " · signed in with your saved session" : ""}` })),
     el("div", { className: "grade", textContent: grade })));
   r.append(el("p", { className: "verdict", textContent: VERDICT_TEXT[grade] || "" }));
 
@@ -233,7 +236,30 @@ function renderLive(url) {
     el("a", { href: url, target: "_blank", rel: "noopener", className: "muted", textContent: "Open live view in a new tab ↗", style: "margin-top:8px" }));
 }
 
+let lastRun = null;
+function showLoginPrompt(host) {
+  const box = el("div", { className: "login" },
+    el("b", { textContent: `🔐 ${host} shows the bill only after you log in` }),
+    el("p", { className: "muted", textContent: "Sign in yourself in a TinyFish browser. Your number and OTP go only into TinyFish's page; DarkSight never sees them. Then the agent reruns with your saved session." }));
+  const status = el("span", { className: "muted" });
+  const signIn = el("button", { textContent: `1 · Sign in to ${host} ↗` });
+  const retry = el("button", { className: "ghost", textContent: "2 · I've signed in and clicked Save, retry ▶", disabled: true });
+  signIn.onclick = async () => {
+    status.textContent = "Opening the TinyFish sign-in page…";
+    try {
+      const { setup_url } = await api("/api/login", { host });
+      window.open(setup_url, "_blank", "noopener");
+      status.textContent = "Log in on that page, click Save profile, then come back here.";
+      retry.disabled = false;
+    } catch (e) { status.textContent = "✗ " + e.message; }
+  };
+  retry.onclick = () => run({ ...lastRun, signed_in: true });
+  box.append(el("div", { className: "row" }, signIn, retry), status);
+  $("report").prepend(box);
+}
+
 async function run(body) {
+  lastRun = body;
   document.querySelectorAll("button").forEach((b) => (b.disabled = true));
   $("live").className = "empty"; $("live").dataset.url = ""; $("live").textContent = "Starting the TinyFish browser…";
   try {
@@ -248,6 +274,7 @@ async function poll(id) {
   if (job.status !== "running") {
     clearInterval(timer); timer = null; unlock();
     if (job.status === "done") showReport(job); else showFailure(job);
+    if (job.needs_login) showLoginPrompt(job.needs_login);
     if (job.status !== "done" && !job.live) $("live").textContent = "The agent stopped before the browser view was ready.";
     loadScenarios();
   }
