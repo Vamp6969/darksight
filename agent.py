@@ -19,9 +19,13 @@ SCHEMA = {  # every platform returns the same evidence fields
             "price_shown_inr": {"type": "string"}, "note": {"type": "string"}}}},
         "fees": {"type": "array", "items": {"type": "object", "properties": {
             "label": {"type": "string"}, "amount_inr": {"type": "number"}}}},
-        "final_total_inr": {"type": "string"},
-        "urgency": {"type": "array", "items": {"type": "string"}},
-        "preticked": {"type": "array", "items": {"type": "string"}},
+        "final_total_inr": {"type": "string", "description":
+            "The final amount payable INCLUDING all taxes and fees, read from the last page before payment"},
+        "urgency": {"type": "array", "items": {"type": "string"}, "description":
+            "Scarcity or time-pressure claims, e.g. 'Only 1 left', countdown timers, 'deal ends soon'"},
+        "preticked": {"type": "array", "items": {"type": "string"}, "description":
+            "Paid extras already selected without the user choosing them (insurance, tips, donations, "
+            "add-ons that change the total). Empty list if none. NOT payment terms or free perks."},
     },
 }
 
