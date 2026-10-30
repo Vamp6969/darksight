@@ -54,7 +54,7 @@ def drip_pricing(ev):
     if jump <= 2:
         return PASS, "Drip pricing", f"Price held: ₹{first:,.0f} → ₹{total:,.0f}"
     late = ", ".join(f["label"] for f in ev.get("fees", [])
-                     if f.get("late", True) and "total" not in f["label"].lower()) or "unlisted charges"
+                     if f.get("late", True) and "total" not in f["label"].lower() and (f.get("amount_inr") or 0) > 0) or "unlisted charges"
     return (FAIL if jump > 10 else WARN), "Drip pricing", \
         f"₹{first:,.0f} → ₹{total:,.0f} (+{jump:.0f}%) at the last step; added: {late}"
 
