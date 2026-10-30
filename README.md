@@ -32,7 +32,7 @@ Report card grade: **C**. These are signals for review, not legal conclusions.
 ## How it works
 
 ```
-scenarios.json ──► agent.py ──► TinyFish agent (stealth browser, stops before payment)
+scenarios.json ──► agent.py ──► TinyFish agents in parallel (Python SDK, stealth browser, output_schema, stop before payment)
                                        │
                                        ▼
                          evidence/<scenario>.json  (steps, prices, fees, urgency text)
@@ -47,7 +47,8 @@ scenarios.json ──► agent.py ──► TinyFish agent (stealth browser, sto
 ```bash
 pip install -r requirements.txt
 export TINYFISH_API_KEY=...            # https://agent.tinyfish.ai
-python agent.py booking_blr            # send the agent undercover -> evidence/booking_blr.json
+python agent.py                        # all scenarios, agents in parallel -> evidence/*.json
+python agent.py booking_blr            # just one scenario
 python report.py evidence/booking_blr.json   # -> report_booking_blr.html
 python detect.py                       # detector self-check
 ```
